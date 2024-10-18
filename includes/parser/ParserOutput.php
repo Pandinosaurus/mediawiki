@@ -31,7 +31,6 @@ use MediaWiki\MediaWikiServices;
 use MediaWiki\Message\Converter;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Parser\Parsoid\PageBundleParserOutputConverter;
-use MediaWiki\Title\Title;
 use MediaWiki\Title\TitleValue;
 use UnexpectedValueException;
 use Wikimedia\Bcp47Code\Bcp47Code;
@@ -307,6 +306,8 @@ class ParserOutput extends CacheTime implements ContentMetadataCollector {
 
 	/**
 	 * @var bool Whether to emit X-Frame-Options: DENY.
+	 * This controls if anti-clickjacking / frame-breaking headers will
+	 * be sent. This should be done for pages where edit actions are possible.
 	 */
 	private $mPreventClickjacking = false;
 
@@ -970,6 +971,19 @@ class ParserOutput extends CacheTime implements ContentMetadataCollector {
 		return $oldValue;
 	}
 
+	/**
+	 * Update the index policy of the robots meta tag.
+	 *
+	 * Note that calling this method does not guarantee
+	 * that {@link self::getIndexPolicy()} will return the given policy –
+	 * if different calls set the index policy to 'index' and 'noindex',
+	 * then 'noindex' always wins (T16899), even if the 'index' call happened later.
+	 * If this is not what you want,
+	 * you can reset {@link ParserOutputFlags::NO_INDEX_POLICY} with {@link self::setOutputFlag()}.
+	 *
+	 * @param string $policy 'index' or 'noindex'.
+	 * @return string The previous policy.
+	 */
 	public function setIndexPolicy( $policy ): string {
 		$old = $this->getIndexPolicy();
 		if ( $policy === 'noindex' ) {
@@ -1056,17 +1070,20 @@ class ParserOutput extends CacheTime implements ContentMetadataCollector {
 	public function addLanguageLink( $t ): void {
 		# Note that fragments are preserved
 		if ( $t instanceof ParsoidLinkTarget ) {
-			// language links are unusual in using 'text' rather than 'db key'
-			// T296019: This should be made more efficient so we don't need
-			// a full title lookup.
-			$t = Title::newfromLinkTarget( $t )->getFullText();
+			// Language links are unusual in using 'text' rather than 'db key'
+			// Note that fragments are preserved.
+			$lang = $t->getInterwiki();
+			$title = $t->getText();
+			if ( $t->hasFragment() ) {
+				$title .= '#' . $t->getFragment();
+			}
+		} else {
+			[ $lang, $title ] = array_pad( explode( ':', $t, 2 ), -2, '' );
 		}
-		if ( !str_contains( $t, ':' ) ) {
+		if ( $lang === '' ) {
 			// T374736: For backward compatibility with test cases only!
 			wfDeprecated( __METHOD__ . ' without prefix', '1.43' );
-			[ $lang, $title ] = [ $t, '|' ]; // | can not occur in valid title
-		} else {
-			[ $lang, $title ] = explode( ':', $t, 2 );
+			[ $lang, $title ] = [ $title, '|' ]; // | can not occur in valid title
 		}
 		$this->mLanguageLinkMap[$lang] ??= $title;
 	}
@@ -1393,6 +1410,9 @@ class ParserOutput extends CacheTime implements ContentMetadataCollector {
 	public function addOutputPageMetadata( OutputPage $out ): void {
 		// This should eventually use the same merge mechanism used
 		// internally to merge ParserOutputs together.
+		// (ie: $this->mergeHtmlMetaDataFrom( $out->getMetadata() )
+		// once preventClickjacking, moduleStyles, modules, jsconfigvars,
+		// and head items are moved to OutputPage::$metadata)
 
 		// Take the strictest click-jacking policy. This is to ensure any one-click features
 		// such as patrol or rollback on the transcluded special page will result in the wiki page
@@ -2232,7 +2252,7 @@ class ParserOutput extends CacheTime implements ContentMetadataCollector {
 	 * @param bool $flag New flag value
 	 * @since 1.38
 	 */
-	public function setPreventClickjacking( bool $flag ) {
+	public function setPreventClickjacking( bool $flag ): void {
 		$this->mPreventClickjacking = $flag;
 	}
 

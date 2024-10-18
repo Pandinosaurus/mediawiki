@@ -85,6 +85,7 @@ use MediaWiki\JobQueue\JobQueueGroupFactory;
 use MediaWiki\Json\JsonCodec;
 use MediaWiki\Language\FormatterFactory;
 use MediaWiki\Language\Language;
+use MediaWiki\Language\LanguageCode;
 use MediaWiki\Languages\LanguageConverterFactory;
 use MediaWiki\Languages\LanguageFactory;
 use MediaWiki\Languages\LanguageFallback;
@@ -414,7 +415,7 @@ class MediaWikiServices extends ServiceContainer {
 	 * @param string $quick Set this to "quick" to allow expensive resources to be re-used.
 	 * See SalvageableService for details.
 	 */
-	public static function resetGlobalInstance( Config $bootstrapConfig = null, $quick = '' ) {
+	public static function resetGlobalInstance( ?Config $bootstrapConfig = null, $quick = '' ) {
 		if ( self::$instance === null ) {
 			// no global instance yet, nothing to reset
 			return;
@@ -971,6 +972,13 @@ class MediaWikiServices extends ServiceContainer {
 	 */
 	public function getContentLanguage(): Language {
 		return $this->getService( 'ContentLanguage' );
+	}
+
+	/**
+	 * @since 1.43
+	 */
+	public function getContentLanguageCode(): LanguageCode {
+		return $this->getService( 'ContentLanguageCode' );
 	}
 
 	/**

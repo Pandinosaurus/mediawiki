@@ -31,6 +31,7 @@ class Router extends OO.Registry {
 		this.enabled = true;
 		this.oldHash = this.getPath();
 
+		// Events
 		window.addEventListener( 'popstate', () => {
 			this.emit( 'popstate' );
 		} );
@@ -39,28 +40,7 @@ class Router extends OO.Registry {
 			this.emit( 'hashchange' );
 		} );
 
-		this.on( 'hashchange', () => {
-			// event.originalEvent.newURL is undefined on Android 2.x
-			if ( this.enabled ) {
-				const routeEvent = $.Event( 'route', {
-					path: this.getPath()
-				} );
-				this.emit( 'route', routeEvent );
-
-				if ( !routeEvent.isDefaultPrevented() ) {
-					this.checkRoute();
-				} else {
-					// if route was prevented, ignore the next hash change and revert the
-					// hash to its old value
-					this.enabled = false;
-					this.navigate( this.oldHash );
-				}
-			} else {
-				this.enabled = true;
-			}
-
-			this.oldHash = this.getPath();
-		} );
+		this.connect( this, { hashchange: 'onRouterHashChange' } );
 	}
 
 	/* Events */
@@ -74,11 +54,41 @@ class Router extends OO.Registry {
 	 */
 
 	/**
+	 * Event fired whenever the hash changes.
+	 *
 	 * @event module:mediawiki.router#route
 	 * @param {jQuery.Event} routeEvent
 	 */
 
 	/* Methods */
+
+	/**
+	 * Handle hashchange events emitted by ourselves
+	 *
+	 * @param {HashChangeEvent} [event] Hash change event, if triggered by native event
+	 */
+	onRouterHashChange() {
+		if ( this.enabled ) {
+			// event.originalEvent.newURL is undefined on Android 2.x
+			const routeEvent = $.Event( 'route', {
+				path: this.getPath()
+			} );
+			this.emit( 'route', routeEvent );
+
+			if ( !routeEvent.isDefaultPrevented() ) {
+				this.checkRoute();
+			} else {
+				// if route was prevented, ignore the next hash change and revert the
+				// hash to its old value
+				this.enabled = false;
+				this.navigate( this.oldHash, true );
+			}
+		} else {
+			this.enabled = true;
+		}
+
+		this.oldHash = this.getPath();
+	}
 
 	/**
 	 * Check the current route and run appropriate callback if it matches.
@@ -132,7 +142,7 @@ class Router extends OO.Registry {
 	/**
 	 * Navigate to a specific route.
 	 *
-	 * @param {string} title of new page
+	 * @param {string} title Title of new page
 	 * @param {Object} options
 	 * @param {string} options.path e.g. '/path/' or '/path/#foo'
 	 * @param {boolean} options.useReplaceState Set replaceStateState to use pushState when you want to
@@ -144,6 +154,8 @@ class Router extends OO.Registry {
 		} else {
 			history.pushState( null, title, options.path );
 		}
+		// history.replaceState/pushState doesn't trigger a hashchange event
+		this.onRouterHashChange();
 	}
 
 	/**
@@ -151,8 +163,10 @@ class Router extends OO.Registry {
 	 *
 	 * @deprecated Use {@link module:mediawiki.router#navigateTo} instead
 	 * @param {string} path String with a route (hash without #).
+	 * @param {boolean} [fromHashchange] (Internal) The navigate call originated
+	 * form a hashchange event, so don't emit another one.
 	 */
-	navigate( path ) {
+	navigate( path, fromHashchange ) {
 		// Take advantage of `pushState` when available, to clear the hash and
 		// not leave `#` in the history. An entry with `#` in the history has
 		// the side-effect of resetting the scroll position when navigating the
@@ -161,7 +175,12 @@ class Router extends OO.Registry {
 			// To clear the hash we need to cut the hash from the URL.
 			path = window.location.href.replace( /#.*$/, '' );
 			history.pushState( null, document.title, path );
-			this.checkRoute();
+			if ( !fromHashchange ) {
+				// history.pushState doesn't trigger a hashchange event
+				this.onRouterHashChange();
+			} else {
+				this.checkRoute();
+			}
 		} else {
 			window.location.hash = path;
 		}

@@ -1134,6 +1134,10 @@ return [
 		'dependencies' => [
 			'mediawiki.cookie',
 		],
+		'messages' => [
+			'table-of-contents-show-button-aria-label',
+			'table-of-contents-hide-button-aria-label'
+		],
 	],
 	'mediawiki.Uri' => [
 		'localBasePath' => MW_INSTALL_PATH . '/resources/src/mediawiki.Uri',
@@ -2256,6 +2260,7 @@ return [
 		'packageFiles' => [
 			'resources/src/mediawiki.special.block/init.js',
 			'resources/src/mediawiki.special.block/util.js',
+			'resources/src/mediawiki.special.block/stores/block.js',
 			'resources/src/mediawiki.special.block/components/BlockDetailsOptions.vue',
 			'resources/src/mediawiki.special.block/components/BlockTypeField.vue',
 			'resources/src/mediawiki.special.block/components/ExpiryField.vue',
@@ -2276,6 +2281,7 @@ return [
 		'dependencies' => [
 			'vue',
 			'@wikimedia/codex',
+			'pinia',
 			'mediawiki.jqueryMsg',
 		],
 		'messages' => [
@@ -2356,6 +2362,9 @@ return [
 			'log-action-filter-block-reblock',
 			'log-action-filter-block-unblock',
 			'log-fulllog',
+			'ipb-confirm',
+			'ipb-blockingself',
+			'ipb-confirmaction',
 		],
 	],
 	'mediawiki.protectionIndicators.styles' => [

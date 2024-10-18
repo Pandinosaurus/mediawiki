@@ -141,7 +141,7 @@ class JsonCodec
 		return $this->deserialize( $json, $expectedClass );
 	}
 
-	public function deserialize( $json, string $expectedClass = null ) {
+	public function deserialize( $json, ?string $expectedClass = null ) {
 		Assert::parameterType( [ 'stdClass', 'array', 'string' ], $json, '$json' );
 		Assert::precondition(
 			!$expectedClass ||
@@ -171,11 +171,11 @@ class JsonCodec
 				if ( is_a( $got, $expectedClass, true ) ) {
 					// Everything ok!
 				} else {
-					throw new JsonException( "Expected ${expectedClass} got ${got}" );
+					throw new JsonException( "Expected {$expectedClass} got {$got}" );
 				}
 			} else {
 				$got = get_debug_type( $json );
-				throw new JsonException( "Expected ${expectedClass} got ${got}" );
+				throw new JsonException( "Expected {$expectedClass} got {$got}" );
 			}
 		}
 		try {
@@ -184,7 +184,7 @@ class JsonCodec
 			throw new JsonException( $e->getMessage() );
 		}
 		if ( $expectedClass && !is_a( $result, $expectedClass, false ) ) {
-			throw new JsonException( "Unexpected class: ${expectedClass}" );
+			throw new JsonException( "Unexpected class: {$expectedClass}" );
 		}
 		return $result;
 	}
